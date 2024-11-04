@@ -1,43 +1,82 @@
 import { useEffect, useState } from "react";
+import "../styles/Data.css";
 
-const Data = () => {
-  const [bids, setBids] = useState([0]);
+type Packet = {
+  src: string;
+  dst: string;
+  spoofed: boolean;
+};
+
+type DataProps = {
+  isWebSocketActive: boolean;
+};
+
+const Data = ({ isWebSocketActive }: DataProps) => {
+  const [packets, setPackets] = useState<Packet[]>([]);
 
   useEffect(() => {
-    const ws = new WebSocket("wss://ws.bitstamp.net");
+    let ws: WebSocket | null = null;
 
-    const apiCall = {
-      event: "bts:subscribe",
-      data: { channel: "order_book_btcusd" },
-    };
+    if (isWebSocketActive) {
+      ws = new WebSocket("ws://127.0.0.1:8000/ws");
 
-    ws.onopen = (event) => {
-      ws.send(JSON.stringify(apiCall));
-    };
-
-    ws.onmessage = function (event) {
-      const json = JSON.parse(event.data);
-      try {
-        if (json.event == "data") {
-          setBids(json.data.bids.slice(0, 5));
+      ws.onopen = () => {
+        console.log("Connected to the WebSocket server");
+      };
+      ws.onmessage = function (event) {
+        const packetData = JSON.parse(event.data);
+        console.log({ packetData });
+        try {
+          // Append new packet data at the beginning of the state array
+          setPackets((prevPackets) =>
+            [...prevPackets, packetData].slice(0, 50)
+          );
+        } catch (err) {
+          console.log(err);
         }
-      } catch (err) {
-        console.log(err);
+      };
+
+      // Clean up the WebSocket connection when isWebSocketActive changes
+      return () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.close();
+          console.log("WebSocket closed after filter complete");
+        }
+      };
+    }
+
+    // If not active, just return to avoid trying to use ws
+    return () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+        console.log("WebSocket connection closed");
       }
     };
-    return () => ws.close();
-  }, []);
+  }, [isWebSocketActive]);
 
-  //map the first 5 bids
-  const firstBids = bids.map((item) => {
-    return (
-      <div>
-        <p> {item}</p>
-      </div>
-    );
-  });
+  console.log({ packets });
 
-  return <div>{firstBids}</div>;
+  // Map the packets to display them as live comments
+  const packetList = packets.map((packet, index) => (
+    <div key={index} className="packet-item">
+      <p>
+        <strong>Source IP:</strong> {packet.src}
+      </p>
+      <p>
+        <strong>Destination IP:</strong> {packet.dst}
+      </p>
+      <p>
+        <strong>Spoofed:</strong> {packet.spoofed ? "Yes" : "No"}
+      </p>
+    </div>
+  ));
+
+  return (
+    <div className="packet-container">
+      <h1 className="my-4 text-gray-900 sm:text-xl">Live Packet Feed</h1>
+      <div className="packet-feed">{packetList}</div>
+    </div>
+  );
 };
 
 export default Data;
