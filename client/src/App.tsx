@@ -7,6 +7,7 @@ import DataContext from "./context/DataContext";
 import Details from "./Pages/Details";
 import SpoofPackets from "./Pages/SpoofPackets";
 import Filtered from "./Pages/Filtered";
+import Data from "./Pages/Data";
 
 const App = () => {
   return (

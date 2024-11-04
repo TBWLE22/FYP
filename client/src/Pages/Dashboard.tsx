@@ -2,17 +2,19 @@ import { useNavigate } from "react-router-dom";
 import { useDataContext } from "../context/DataContext";
 import { useState } from "react";
 import { Spinner } from "@material-tailwind/react";
+import Data from "./Data";
 
 const Dashboard = () => {
   const { isData, setIsData } = useDataContext();
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
+
   return (
     <div className="flex flex-col mt-12">
       <div className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            Trusted by eCommerce Businesses
+            IP Spoofing and DOS Attacks
           </h2>
 
           <p className="mt-4 text-gray-500 sm:text-xl">
@@ -202,6 +204,7 @@ const Dashboard = () => {
           ""
         )}
       </div>
+      <Data />
     </div>
   );
 };
