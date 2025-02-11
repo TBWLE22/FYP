@@ -4,48 +4,50 @@ import time
 import threading
 import numpy as np
 
-# Flow state tracking
-flows = defaultdict(lambda: {'start_time': None, 'packets': [], 'bytes': 0, 'tcp_flags': defaultdict(int)})
+flows = defaultdict(lambda: {'start_time': None, 'packets': [
+], 'bytes': 0, 'tcp_flags': defaultdict(int)})
 
-# Timer to reset and feed the stats every minute
+
 def reset_and_feed():
     global flows
     while True:
-        time.sleep(10)  # Run every minute
+        time.sleep(10)
         calculate_stats_and_feed_to_model(flows)
-        flows = defaultdict(lambda: {'start_time': None, 'packets': [], 'bytes': 0, 'tcp_flags': defaultdict(int)})  # Reset state
+        flows = defaultdict(lambda: {'start_time': None, 'packets': [
+        ], 'bytes': 0, 'tcp_flags': defaultdict(int)})  # Reset state
 
-# Function to calculate statistics for a flow
+
 def calculate_stats_and_feed_to_model(flows):
     for flow_key, flow_data in flows.items():
-        # Extract flow details
+
         src_ip, dst_ip, src_port, dst_port = flow_key
         packets = flow_data['packets']
         bytes_sent = flow_data['bytes']
         tcp_flags = flow_data['tcp_flags']
-        
-        # Flow Duration (time difference between first and last packet)
+
         flow_duration = packets[-1].time - packets[0].time
-        
-        # Packet Lengths statistics
+
         packet_lengths = [len(packet) for packet in packets]
         packet_length_min = np.min(packet_lengths)
         packet_length_max = np.max(packet_lengths)
         packet_length_mean = np.mean(packet_lengths)
         packet_length_std = np.std(packet_lengths)
         packet_length_variance = np.var(packet_lengths)
-        
+
         # IAT (Inter-arrival time statistics)
         if len(packets) > 1:  # Only calculate IAT if there are at least two packets
-            iat = [packets[i].time - packets[i-1].time for i in range(1, len(packets))]
+            iat = [packets[i].time - packets[i -
+                                             1].time for i in range(1, len(packets))]
             flow_iat_mean = np.mean(iat)
             flow_iat_std = np.std(iat)
-            flow_iat_max = np.max(iat) if len(iat) > 0 else 0  # Ensure max is safe
-            flow_iat_min = np.min(iat) if len(iat) > 0 else 0  # Ensure min is safe
+            flow_iat_max = np.max(iat) if len(
+                iat) > 0 else 0  # Ensure max is safe
+            flow_iat_min = np.min(iat) if len(
+                iat) > 0 else 0  # Ensure min is safe
         else:
             # If there are fewer than 2 packets, set IAT stats to 0
             flow_iat_mean = flow_iat_std = flow_iat_max = flow_iat_min = 0
-        
+
         # TCP Flag Counts
         syn_count = tcp_flags['S']
         ack_count = tcp_flags['A']
@@ -53,7 +55,7 @@ def calculate_stats_and_feed_to_model(flows):
         rst_count = tcp_flags['R']
         psh_count = tcp_flags['P']
         urg_count = tcp_flags['U']
-        
+
         # Feed stats to your ML model
         features = {
             'Protocol': 'TCP',
@@ -78,7 +80,8 @@ def calculate_stats_and_feed_to_model(flows):
             'PSH Flag Count': psh_count,
             'ACK Flag Count': ack_count,
             'URG Flag Count': urg_count,
-            'Down/Up Ratio': (flow_data['bytes'] / flow_data['bytes']) if flow_data['bytes'] else 0,  # Adjust if needed
+            # Adjust if needed
+            'Down/Up Ratio': (flow_data['bytes'] / flow_data['bytes']) if flow_data['bytes'] else 0,
             'Avg Packet Size': np.mean(packet_lengths),
             'Label': 0  # Adjust based on detection model output
         }
@@ -87,23 +90,27 @@ def calculate_stats_and_feed_to_model(flows):
         print(features)
         # Here you could feed these features to your ML model for classification
 
-        
 # Function to process packets
+
+
 def packet_handler(packet):
     if packet.haslayer(IP):
         src_ip = packet[IP].src
         dst_ip = packet[IP].dst
-        flow_key = (src_ip, dst_ip, packet.sport, packet.dport)  # Track flow based on IP & Port
+        # Track flow based on IP & Port
+        flow_key = (src_ip, dst_ip, packet.sport, packet.dport)
 
         # Update flow state
         if flow_key not in flows:
-            flows[flow_key]['start_time'] = packet.time  # Set start time on first packet
+            # Set start time on first packet
+            flows[flow_key]['start_time'] = packet.time
         flows[flow_key]['packets'].append(packet)
         flows[flow_key]['bytes'] += len(packet)  # Accumulate bytes
         if packet.haslayer(TCP):
             for flag in ['S', 'A', 'F', 'R', 'P', 'U']:  # TCP flags
                 if flag in packet[TCP].flags:
                     flows[flow_key]['tcp_flags'][flag] += 1
+
 
 # Start capturing packets and reset every minute
 if __name__ == "__main__":
@@ -113,4 +120,5 @@ if __name__ == "__main__":
     timer_thread.start()
 
     # Start sniffing packets in the background
-    sniff(prn=packet_handler, store=0, filter="ip")  # You can filter more specifically based on your needs
+    # You can filter more specifically based on your needs
+    sniff(prn=packet_handler, store=0, filter="ip")
