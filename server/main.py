@@ -213,12 +213,8 @@ async def websocket_endpoint(websocket: WebSocket):
             pass
 
 
-@app.websocket("/count")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            await asyncio.sleep(1)
-            await websocket.send_json({'spoofed_flow_count': str(spoofed_ip_count), 'flows_analyzed': str(flow_count)})
-    except WebSocketDisconnect:
-        print("WebSocket client disconnected")
+@app.get("/count")
+async def get_counts():
+    global spoofed_ip_count
+    global flow_count
+    return {'spoofed_flow_count': int(spoofed_ip_count), 'flows_analyzed': int(flow_count)}

@@ -4,15 +4,20 @@ import "../styles/Data.css";
 type Packet = {
   "Source IP": string;
   "Destination IP": string;
-  "Spoofed IP": boolean;
+  "Spoofed IP"?: boolean;
   "Flow Bytes/s": number;
 };
 
 type DataProps = {
   isWebSocketActive: boolean;
+  // setPacketLength: number;
 };
 
-const Data = ({ isWebSocketActive }: DataProps) => {
+const Data = ({
+  isWebSocketActive,
+  setPacketLength,
+  setFlowArray,
+}: DataProps) => {
   const [packets, setPackets] = useState<Packet[]>([]);
 
   useEffect(() => {
@@ -25,20 +30,21 @@ const Data = ({ isWebSocketActive }: DataProps) => {
         console.log("Connected to the WebSocket server");
       };
       ws.onmessage = function (event) {
-        const packetData = JSON.parse(event.data);
-        console.log({ packetData });
-        console.log(packetData.Protocol);
         try {
-          // Append new packet data at the beginning of the state array
+          const packetData = JSON.parse(event.data);
           setPackets(packetData);
+          // append the packet data to the flowArray
+          setFlowArray((prev) => [...prev, packetData]);
+          setPacketLength(packetData.length);
         } catch (err) {
           console.log(err);
         }
       };
+      ws.onclose = () => console.log("WebSocket connection closed");
 
       // Clean up the WebSocket connection when isWebSocketActive changes
       return () => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        if (ws?.readyState === WebSocket.OPEN) {
           ws.close();
           console.log("WebSocket closed after filter complete");
         }
@@ -47,18 +53,23 @@ const Data = ({ isWebSocketActive }: DataProps) => {
 
     // If not active, just return to avoid trying to use ws
     return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
+      if (ws?.readyState === WebSocket.OPEN) {
         ws.close();
         console.log("WebSocket connection closed");
       }
     };
-  }, [isWebSocketActive]);
+  }, [isWebSocketActive, setPacketLength]);
 
   console.log({ packets });
 
   // Map the packets to display them as live comments
   const packetList = packets.map((packet, index) => (
-    <div key={index} className="packet-item">
+    <div
+      key={index}
+      className={`packet-item ${
+        packet["Spoofed IP"] === false ? "bg-green-200 " : "bg-red-200"
+      }`}
+    >
       <p>
         <strong>Source IP:</strong> {packet["Source IP"]}
       </p>
@@ -66,7 +77,7 @@ const Data = ({ isWebSocketActive }: DataProps) => {
         <strong>Destination IP:</strong> {packet["Destination IP"]}
       </p>
       <p>
-        <strong>Spoofed IP:</strong> {packet["Spoofed IP"]}
+        <strong>Spoofed IP:</strong> {packet["Spoofed IP"]?.toString()}
       </p>
       <p>
         <strong>Flow Bytes/s:</strong> {packet["Flow Bytes/s"]}

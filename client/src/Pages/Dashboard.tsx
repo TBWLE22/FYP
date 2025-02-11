@@ -3,63 +3,65 @@ import { useDataContext } from "../context/DataContext";
 import { useState, useEffect } from "react";
 import { Spinner } from "@material-tailwind/react";
 import Data from "./Data";
+import axios from "axios";
 
 const Dashboard = () => {
-  const { isData, setIsData } = useDataContext();
+  const {
+    isData,
+    setIsData,
+    flowsAnalyzed,
+    setFlowsAnalyzed,
+    spoofedFlowCount,
+    setSpoofedFlowCount,
+    packetLength,
+    setPacketLength,
+    flowArray,
+    setFlowArray,
+  } = useDataContext();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isWebSocketActive, setIsWebSocketActive] = useState(false);
   const navigate = useNavigate();
+
+  const getFlowAnalysis = async () => {
+    const {
+      data: { flows_analyzed, spoofed_flow_count },
+    } = await axios.get("http://127.0.0.1:8000/count");
+    setFlowsAnalyzed(flows_analyzed);
+    setSpoofedFlowCount(spoofed_flow_count);
+  };
 
   useEffect(() => {
     // Start the WebSocket connection when isProcessing is true
     if (isProcessing) {
       setIsWebSocketActive(true);
+      getFlowAnalysis();
     } else {
       setIsWebSocketActive(false);
     }
   }, [isProcessing]);
 
+
   return (
     <div className="flex flex-col mt-12">
-      <div className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <div className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 ">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
             IP Spoofing Detection
           </h2>
 
           <p className="mt-4 text-gray-500 sm:text-xl">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Ratione
-            dolores laborum labore provident impedit esse recusandae facere
-            libero harum sequi.
+            This dashboard provides real-time analysis of network traffic,
+            helping you to detect IP spoofing attempts. Keep track of the number
+            of flows analyzed and the number of spoofed flows detected to ensure
+            network security.
           </p>
         </div>
-
-        <dl className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center">
-            <dt className="order-last text-lg font-medium text-gray-500">
-              Total Number of Packets
-            </dt>
-
-            <dd className="text-4xl font-extrabold text-blue-600 md:text-5xl">
-              {isData ? <p>4.8m</p> : <p>0</p>}
-            </dd>
-          </div>
-
-          <div className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center">
-            <dt className="order-last text-lg font-medium text-gray-500">
-              Incoming Packets
-            </dt>
-
-            <dd className="text-4xl font-extrabold text-blue-600 md:text-5xl">
-              {isData ? <p>86k/80k</p> : <p>0</p>}
-            </dd>
-          </div>
-
+        <dl className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2 lg:grid-cols-3">
           <div
             className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center hover:cursor-pointer hover:bg-gray-50"
             onClick={() => {
-              if (isData) navigate("/filtered");
-              else alert("filter first");
+              if (isData) navigate("/flowAnalysis");
+              else alert("Please Filter First");
             }}
           >
             {isProcessing ? (
@@ -69,21 +71,30 @@ const Dashboard = () => {
             ) : (
               <>
                 <dt className="order-last text-lg font-medium text-gray-500">
-                  Packets Filtered
+                  Total Number of Flows Analyzed
                 </dt>
-
                 <dd className="text-4xl font-extrabold text-blue-600 md:text-5xl">
-                  {isData ? <p>24</p> : <p>0</p>}
+                  {isData ? <p>{flowsAnalyzed}</p> : <p>0</p>}
                 </dd>
               </>
             )}
+          </div>
+
+          <div className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center">
+            <dt className="order-last text-lg font-medium text-gray-500">
+              Total Number of Packets in{" "}
+              {isData ? <strong>Last</strong> : <strong>Current</strong>} Flow
+            </dt>
+            <dd className="text-4xl font-extrabold text-blue-600 md:text-5xl">
+              <p>{packetLength}</p>
+            </dd>
           </div>
 
           <div
             className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center hover:cursor-pointer hover:bg-gray-50"
             onClick={() => {
               if (isData) navigate("/spoofed");
-              else alert("filter first");
+              else alert("Please Filter First");
             }}
           >
             {isProcessing ? (
@@ -94,32 +105,36 @@ const Dashboard = () => {
               <>
                 {" "}
                 <dt className="order-last text-lg font-medium text-gray-500">
-                  Spoofed Packets Detected
+                  Spoofed Flows Detected
                 </dt>
                 <dd className="text-4xl font-extrabold text-blue-600 md:text-5xl">
-                  {isData ? <p>86</p> : <p>0</p>}
+                  {isData ? <p>{spoofedFlowCount}</p> : <p>0</p>}
                 </dd>
               </>
             )}
           </div>
         </dl>
       </div>
-      {isProcessing && <Data isWebSocketActive={isWebSocketActive} />}
+      {isProcessing && (
+        <Data
+          isWebSocketActive={isWebSocketActive}
+          setPacketLength={setPacketLength}
+          setFlowArray={setFlowArray}
+        />
+      )}
       {/* <Data /> */}
       <section className="bg-gray-50">
         <div className="mx-auto max-w-screen-xl px-4 py-10 lg:flex lg:h-full lg:items-center">
           <div className="mx-auto max-w-l text-center">
             <h1 className="text-3xl font-extrabold sm:text-5xl">
               Inter Domain Packet Filtering
-              {/* <strong className="font-extrabold text-red-700 sm:block">
-                {" "}
-                Increase Conversion.{" "}
-              </strong> */}
             </h1>
 
             <p className="mt-4 sm:text-xl/relaxed">
-              Lorem ipsum dolor sit amet consectetur, adipisicing elit. Nesciunt
-              illo tenetur fuga ducimus numquam ea!
+              Implementing inter-domain packet filtering helps to enhance
+              network security by detecting and filtering malicious traffic
+              between different network domains. It ensures that only legitimate
+              traffic is allowed to flow across the network.
             </p>
 
             <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -131,7 +146,7 @@ const Dashboard = () => {
                     setTimeout(() => {
                       setIsData(!isData);
                       setIsProcessing(false);
-                    }, 50000);
+                    }, 80000);
                   }}
                   disabled={isProcessing}
                 >
@@ -183,15 +198,15 @@ const Dashboard = () => {
               </div>
 
               <p className="mt-4 text-gray-500">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsam
-                ea quo unde vel adipisci blanditiis voluptates eum. Nam, cum
-                minima?
+                The filtering process is complete. You can now view the results
+                of the packet filtering process, including the analyzed flows
+                and any detected spoofed packets.
               </p>
 
               <div className="mt-6 sm:flex sm:gap-4">
                 <button
                   className="inline-block w-full rounded-lg bg-blue-500 px-5 py-3 text-center text-sm font-semibold text-white sm:w-auto"
-                  onClick={() => navigate("/details")}
+                  onClick={() => navigate("/details", { state: { flowArray } })}
                 >
                   View Details
                 </button>

@@ -7,6 +7,7 @@ import DataContext from "./context/DataContext";
 import Details from "./Pages/Details";
 import SpoofPackets from "./Pages/SpoofPackets";
 import Filtered from "./Pages/Filtered";
+import FlowAnalysis from "./Pages/FlowAnalysis";
 
 const App = () => {
   return (
@@ -16,7 +17,7 @@ const App = () => {
           <Route index element={<Dashboard />} />
           <Route path="/details" element={<Details />} />
           <Route path="/spoofed" element={<SpoofPackets />} />
-          <Route path="/filtered" element={<Filtered />} />
+          <Route path="/flowAnalysis" element={<FlowAnalysis />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
