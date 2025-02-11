@@ -34,12 +34,12 @@ const Dashboard = () => {
     // Start the WebSocket connection when isProcessing is true
     if (isProcessing) {
       setIsWebSocketActive(true);
-      getFlowAnalysis();
     } else {
       setIsWebSocketActive(false);
     }
   }, [isProcessing]);
 
+  console.log({ flowsAnalyzed, spoofedFlowCount });
 
   return (
     <div className="flex flex-col mt-12">
@@ -146,6 +146,7 @@ const Dashboard = () => {
                     setTimeout(() => {
                       setIsData(!isData);
                       setIsProcessing(false);
+                      getFlowAnalysis();
                     }, 80000);
                   }}
                   disabled={isProcessing}

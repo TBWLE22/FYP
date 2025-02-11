@@ -60,7 +60,6 @@ const Data = ({
     };
   }, [isWebSocketActive, setPacketLength]);
 
-  console.log({ packets });
 
   // Map the packets to display them as live comments
   const packetList = packets.map((packet, index) => (
