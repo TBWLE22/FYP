@@ -1,18 +1,30 @@
 import { useNavigate } from "react-router-dom";
 import { useDataContext } from "../context/DataContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Spinner } from "@material-tailwind/react";
+import Data from "./Data";
 
 const Dashboard = () => {
   const { isData, setIsData } = useDataContext();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isWebSocketActive, setIsWebSocketActive] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Start the WebSocket connection when isProcessing is true
+    if (isProcessing) {
+      setIsWebSocketActive(true);
+    } else {
+      setIsWebSocketActive(false);
+    }
+  }, [isProcessing]);
+
   return (
     <div className="flex flex-col mt-12">
       <div className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            Trusted by eCommerce Businesses
+            IP Spoofing Detection
           </h2>
 
           <p className="mt-4 text-gray-500 sm:text-xl">
@@ -35,7 +47,7 @@ const Dashboard = () => {
 
           <div className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center">
             <dt className="order-last text-lg font-medium text-gray-500">
-              Incoming/Outgoing Packets
+              Incoming Packets
             </dt>
 
             <dd className="text-4xl font-extrabold text-blue-600 md:text-5xl">
@@ -52,12 +64,7 @@ const Dashboard = () => {
           >
             {isProcessing ? (
               <div className="flex justify-center align-center">
-                <Spinner
-                  color="blue"
-                  onPointerEnterCapture={() => {}}
-                  onPointerLeaveCapture={() => {}}
-                  className="h-16 w-16"
-                />
+                <Spinner color="blue" className="h-16 w-16" />
               </div>
             ) : (
               <>
@@ -81,12 +88,7 @@ const Dashboard = () => {
           >
             {isProcessing ? (
               <div className="flex justify-center align-center">
-                <Spinner
-                  color="blue"
-                  onPointerEnterCapture={() => {}}
-                  onPointerLeaveCapture={() => {}}
-                  className="h-16 w-16"
-                />
+                <Spinner color="blue" className="h-16 w-16" />
               </div>
             ) : (
               <>
@@ -102,6 +104,8 @@ const Dashboard = () => {
           </div>
         </dl>
       </div>
+      {isProcessing && <Data isWebSocketActive={isWebSocketActive} />}
+      {/* <Data /> */}
       <section className="bg-gray-50">
         <div className="mx-auto max-w-screen-xl px-4 py-10 lg:flex lg:h-full lg:items-center">
           <div className="mx-auto max-w-l text-center">
@@ -127,7 +131,7 @@ const Dashboard = () => {
                     setTimeout(() => {
                       setIsData(!isData);
                       setIsProcessing(false);
-                    }, 1000);
+                    }, 10000);
                   }}
                 >
                   Start Filtering
@@ -150,12 +154,7 @@ const Dashboard = () => {
       <div className="m-12">
         {isProcessing ? (
           <div className="flex justify-center align-center">
-            <Spinner
-              color="blue"
-              onPointerEnterCapture={() => {}}
-              onPointerLeaveCapture={() => {}}
-              className="h-16 w-16"
-            />
+            <Spinner color="blue" className="h-16 w-16" />
           </div>
         ) : isData ? (
           <>
