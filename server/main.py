@@ -14,12 +14,17 @@ model.load_model('xgboost_model.json')
 
 app = FastAPI()
 spoofed_ip_count = 0
+flow_count = 0
 packet_queue = Queue()
 
 
 def check_spoofed_ip(flow):
     flow.drop(["Source IP", "Destination IP"], inplace=True, axis=1)
     preds = model.predict(flow)
+    global flow_count
+    global spoofed_ip_count
+    spoofed_ip_count += sum(preds)
+    flow_count += len(flow)
     return preds
 
 
@@ -208,6 +213,12 @@ async def websocket_endpoint(websocket: WebSocket):
             pass
 
 
-@app.get("/hello")
-def get_spoofed_ip_count():
-    return {"spoofed_ip_count": spoofed_ip_count}
+@app.websocket("/count")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            await asyncio.sleep(1)
+            await websocket.send_json({'spoofed_flow_count': str(spoofed_ip_count), 'flows_analyzed': str(flow_count)})
+    except WebSocketDisconnect:
+        print("WebSocket client disconnected")
