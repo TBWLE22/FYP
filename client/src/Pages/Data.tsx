@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import "../styles/Data.css";
 
 type Packet = {
-  src: string;
-  dst: string;
-  spoofed: boolean;
+  "Source IP": string;
+  "Destination IP": string;
+  "Spoofed IP": boolean;
+  "Flow Bytes/s": number;
 };
 
 type DataProps = {
@@ -26,11 +27,10 @@ const Data = ({ isWebSocketActive }: DataProps) => {
       ws.onmessage = function (event) {
         const packetData = JSON.parse(event.data);
         console.log({ packetData });
+        console.log(packetData.Protocol);
         try {
           // Append new packet data at the beginning of the state array
-          setPackets((prevPackets) =>
-            [...prevPackets, packetData].slice(0, 50)
-          );
+          setPackets(packetData);
         } catch (err) {
           console.log(err);
         }
@@ -60,13 +60,16 @@ const Data = ({ isWebSocketActive }: DataProps) => {
   const packetList = packets.map((packet, index) => (
     <div key={index} className="packet-item">
       <p>
-        <strong>Source IP:</strong> {packet.src}
+        <strong>Source IP:</strong> {packet["Source IP"]}
       </p>
       <p>
-        <strong>Destination IP:</strong> {packet.dst}
+        <strong>Destination IP:</strong> {packet["Destination IP"]}
       </p>
       <p>
-        <strong>Spoofed:</strong> {packet.spoofed ? "Yes" : "No"}
+        <strong>Spoofed IP:</strong> {packet["Spoofed IP"]}
+      </p>
+      <p>
+        <strong>Flow Bytes/s:</strong> {packet["Flow Bytes/s"]}
       </p>
     </div>
   ));

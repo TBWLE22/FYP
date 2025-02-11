@@ -131,10 +131,11 @@ const Dashboard = () => {
                     setTimeout(() => {
                       setIsData(!isData);
                       setIsProcessing(false);
-                    }, 10000);
+                    }, 50000);
                   }}
+                  disabled={isProcessing}
                 >
-                  Start Filtering
+                  {isProcessing ? <p>Filtering...</p> : <p>Start Filtering</p>}
                 </button>
               ) : (
                 <button
