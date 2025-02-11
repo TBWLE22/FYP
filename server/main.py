@@ -1,14 +1,27 @@
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from scapy.all import sniff
-from scapy.layers.inet import IP
+from scapy.all import sniff, IP, TCP, UDP
 import asyncio
 import threading
 from queue import Queue
+from collections import defaultdict
+import pandas as pd
+import numpy as np
+from xgboost import XGBClassifier
+
+model = XGBClassifier()
+model.load_model('xgboost_model.json')
 
 app = FastAPI()
 spoofed_ip_count = 0
 packet_queue = Queue()
+
+
+def check_spoofed_ip(flow):
+    flow.drop(["Source IP", "Destination IP"], inplace=True, axis=1)
+    preds = model.predict(flow)
+    return preds
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,10 +31,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+flows = defaultdict(lambda: {
+    'timestamps': [],
+    'Total Fwd Packets': 0,
+    'Total Backward Packets': 0,
+    'Fwd Packets Length Total': 0,
+    'Bwd Packets Length Total': 0,
+    'Fwd Packet Lengths': [],
+    'Bwd Packet Lengths': [],
+    'Fwd IAT': [],
+    'Bwd IAT': [],
+    'Start Time': None,
+    'End Time': None,
+    'Protocol': None,
+    'Source IP': None,
+    'Destination IP': None
+})
 
-@app.get("/hello")
-def get_spoofed_ip_count():
-    return {"spoofed_ip_count": spoofed_ip_count}
+
+def process_packet(packet):
+    if IP in packet:
+        src_ip = packet[IP].src
+        dst_ip = packet[IP].dst
+        protocol = packet[IP].proto
+        src_port = None
+        dst_port = None
+
+        if TCP in packet:
+            src_port = packet[TCP].sport
+            dst_port = packet[TCP].dport
+        elif UDP in packet:
+            src_port = packet[UDP].sport
+            dst_port = packet[UDP].dport
+
+        flow_key = (src_ip, dst_ip, src_port, dst_port, protocol)
+
+        flows[flow_key]['timestamps'].append(packet.time)
+        flows[flow_key]['Protocol'] = protocol
+        flows[flow_key]['Source IP'] = src_ip
+        flows[flow_key]['Destination IP'] = dst_ip
+
+        if flows[flow_key]['Start Time'] is None:
+            flows[flow_key]['Start Time'] = packet.time
+        flows[flow_key]['End Time'] = packet.time
+
+        packet_length = len(packet)
+        if src_ip == flow_key[0]:
+            flows[flow_key]['Total Fwd Packets'] += 1
+            flows[flow_key]['Fwd Packets Length Total'] += packet_length
+            flows[flow_key]['Fwd Packet Lengths'].append(packet_length)
+            if len(flows[flow_key]['Fwd Packet Lengths']) > 1:
+                flows[flow_key]['Fwd IAT'].append(
+                    packet.time - flows[flow_key]['timestamps'][-2])
+        else:
+            flows[flow_key]['Total Backward Packets'] += 1
+            flows[flow_key]['Bwd Packets Length Total'] += packet_length
+            flows[flow_key]['Bwd Packet Lengths'].append(packet_length)
+            if len(flows[flow_key]['Bwd Packet Lengths']) > 1:
+                flows[flow_key]['Bwd IAT'].append(
+                    packet.time - flows[flow_key]['timestamps'][-2])
 
 
 def is_spoofed(ip):
@@ -29,36 +97,104 @@ def is_spoofed(ip):
     return any(ip.startswith(prefix) for prefix in private_ips)
 
 
-def packet_sniffer_callback(packet):
-    global spoofed_ip_count
-    if IP in packet:
-        packet_info = {
-            "src": packet[IP].src,
-            "dst": packet[IP].dst,
-            "spoofed": is_spoofed(packet[IP].src)
-        }
-        if packet_info["spoofed"]:
-            spoofed_ip_count += 1
-        packet_queue.put(packet_info)
-
-
 def start_packet_sniffing():
-    sniff(prn=packet_sniffer_callback, store=False)
+    sniff(prn=process_packet, store=False)
 
 
 sniffer_thread = threading.Thread(target=start_packet_sniffing, daemon=True)
 sniffer_thread.start()
 
 
+async def send_flow_data(websocket):
+    while True:
+        await asyncio.sleep(10)
+        flow_data = []
+        for flow_key, flow_info in flows.items():
+            if len(flow_info['timestamps']) == 0:
+                continue
+
+            flow_duration = flow_info['End Time'] - flow_info['Start Time']
+
+            fwd_packet_length_max = max(
+                flow_info['Fwd Packet Lengths'], default=0)
+            fwd_packet_length_min = min(
+                flow_info['Fwd Packet Lengths'], default=0)
+            fwd_packet_length_mean = np.mean(
+                flow_info['Fwd Packet Lengths']) if flow_info['Fwd Packet Lengths'] else 0
+            fwd_packet_length_std = np.std(
+                flow_info['Fwd Packet Lengths']) if flow_info['Fwd Packet Lengths'] else 0
+
+            bwd_packet_length_max = max(
+                flow_info['Bwd Packet Lengths'], default=0)
+            bwd_packet_length_min = min(
+                flow_info['Bwd Packet Lengths'], default=0)
+            bwd_packet_length_mean = np.mean(
+                flow_info['Bwd Packet Lengths']) if flow_info['Bwd Packet Lengths'] else 0
+            bwd_packet_length_std = np.std(
+                flow_info['Bwd Packet Lengths']) if flow_info['Bwd Packet Lengths'] else 0
+
+            fwd_iat_mean = np.mean(
+                flow_info['Fwd IAT']) if flow_info['Fwd IAT'] else 0
+            fwd_iat_std = np.std(
+                flow_info['Fwd IAT']) if flow_info['Fwd IAT'] else 0
+            fwd_iat_max = max(flow_info['Fwd IAT'], default=0)
+            fwd_iat_min = min(flow_info['Fwd IAT'], default=0)
+
+            bwd_iat_mean = np.mean(
+                flow_info['Bwd IAT']) if flow_info['Bwd IAT'] else 0
+            bwd_iat_std = np.std(
+                flow_info['Bwd IAT']) if flow_info['Bwd IAT'] else 0
+            bwd_iat_max = max(flow_info['Bwd IAT'], default=0)
+            bwd_iat_min = min(flow_info['Bwd IAT'], default=0)
+
+            flow_bytes_per_sec = (flow_info['Fwd Packets Length Total'] +
+                                  flow_info['Bwd Packets Length Total']) / flow_duration if flow_duration > 0 else 0
+            flow_packets_per_sec = (
+                flow_info['Total Fwd Packets'] + flow_info['Total Backward Packets']) / flow_duration if flow_duration > 0 else 0
+
+            flow_data.append({
+                'Protocol': flow_info['Protocol'],
+                'Flow Duration': flow_duration,
+                'Total Fwd Packets': flow_info['Total Fwd Packets'],
+                'Total Backward Packets': flow_info['Total Backward Packets'],
+                'Fwd Packets Length Total': flow_info['Fwd Packets Length Total'],
+                'Bwd Packets Length Total': flow_info['Bwd Packets Length Total'],
+                'Fwd Packet Length Max': fwd_packet_length_max,
+                'Fwd Packet Length Min': fwd_packet_length_min,
+                'Fwd Packet Length Mean': fwd_packet_length_mean,
+                'Fwd Packet Length Std': fwd_packet_length_std,
+                'Bwd Packet Length Max': bwd_packet_length_max,
+                'Bwd Packet Length Min': bwd_packet_length_min,
+                'Bwd Packet Length Mean': bwd_packet_length_mean,
+                'Bwd Packet Length Std': bwd_packet_length_std,
+                'Flow Bytes/s': flow_bytes_per_sec,
+                'Flow Packets/s': flow_packets_per_sec,
+                'Fwd IAT Mean': fwd_iat_mean,
+                'Fwd IAT Std': fwd_iat_std,
+                'Fwd IAT Max': fwd_iat_max,
+                'Fwd IAT Min': fwd_iat_min,
+                'Bwd IAT Mean': bwd_iat_mean,
+                'Bwd IAT Std': bwd_iat_std,
+                'Bwd IAT Max': bwd_iat_max,
+                'Bwd IAT Min': bwd_iat_min,
+                'Source IP': flow_info['Source IP'],
+                'Destination IP': flow_info['Destination IP']
+            })
+
+        flow_df = pd.DataFrame(flow_data)
+        test = check_spoofed_ip(flow_df.copy())
+        flow_df['Spoofed IP'] = True if test[0] == 1 else False
+        await websocket.send_json(flow_df.to_dict(orient='records'))
+
+        flows.clear()
+        flow_data.clear()
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
-        while True:
-            if not packet_queue.empty():
-                packet_info = packet_queue.get()
-                await websocket.send_json(packet_info)
-            await asyncio.sleep(0.1)
+        await send_flow_data(websocket)
     except WebSocketDisconnect:
         print("WebSocket client disconnected")
     except asyncio.CancelledError:
@@ -70,3 +206,8 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close()
         except Exception:
             pass
+
+
+@app.get("/hello")
+def get_spoofed_ip_count():
+    return {"spoofed_ip_count": spoofed_ip_count}
