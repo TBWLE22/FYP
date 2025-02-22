@@ -39,8 +39,6 @@ const Dashboard = () => {
     }
   }, [isProcessing]);
 
-  console.log({ flowsAnalyzed, spoofedFlowCount });
-
   return (
     <div className="flex flex-col mt-12">
       <div className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 ">
@@ -61,7 +59,7 @@ const Dashboard = () => {
             className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center hover:cursor-pointer hover:bg-gray-50"
             onClick={() => {
               if (isData) navigate("/flowAnalysis");
-              else alert("Please Filter First");
+              else alert("Please Detect First");
             }}
           >
             {isProcessing ? (
@@ -71,7 +69,7 @@ const Dashboard = () => {
             ) : (
               <>
                 <dt className="order-last text-lg font-medium text-gray-500">
-                  Total Number of Flows Analyzed
+                  Total Number of Packets Analyzed
                 </dt>
                 <dd className="text-4xl font-extrabold text-blue-600 md:text-5xl">
                   {isData ? <p>{flowsAnalyzed}</p> : <p>0</p>}
@@ -94,7 +92,7 @@ const Dashboard = () => {
             className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center hover:cursor-pointer hover:bg-gray-50"
             onClick={() => {
               if (isData) navigate("/spoofed");
-              else alert("Please Filter First");
+              else alert("Please Detect First");
             }}
           >
             {isProcessing ? (
@@ -105,9 +103,9 @@ const Dashboard = () => {
               <>
                 {" "}
                 <dt className="order-last text-lg font-medium text-gray-500">
-                  Spoofed Flows Detected
+                  Spoofed Packets Detected
                 </dt>
-                <dd className="text-4xl font-extrabold text-blue-600 md:text-5xl">
+                <dd className="text-4xl font-extrabold text-red-600 md:text-5xl">
                   {isData ? <p>{spoofedFlowCount}</p> : <p>0</p>}
                 </dd>
               </>
@@ -135,32 +133,65 @@ const Dashboard = () => {
               network security by detecting and filtering malicious traffic
               between different network domains. It ensures that only legitimate
               traffic is allowed to flow across the network.
+              <br />
+              <strong> The detection process spans for 80 seconds.</strong>
             </p>
 
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               {!isData ? (
-                <button
-                  className="block w-full rounded bg-red-600 px-12 py-3 text-sm font-medium text-white shadow hover:bg-red-700 focus:outline-none focus:ring active:bg-red-500 sm:w-auto hover:cursor-pointer"
-                  onClick={() => {
-                    setIsProcessing(true);
-                    setTimeout(() => {
-                      setIsData(!isData);
-                      setIsProcessing(false);
-                      getFlowAnalysis();
-                    }, 80000);
-                  }}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? <p>Filtering...</p> : <p>Start Filtering</p>}
-                </button>
+                <div className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center gap-4">
+                  <button
+                    className="block w-full rounded bg-red-600 px-12 py-3 text-sm font-medium text-white shadow hover:bg-red-700 focus:outline-none focus:ring active:bg-red-500 sm:w-auto hover:cursor-pointer"
+                    onClick={() => {
+                      setIsProcessing(true);
+                      setTimeout(() => {
+                        setIsData(!isData);
+                        setIsProcessing(false);
+                        getFlowAnalysis();
+                      }, 80000);
+                    }}
+                    disabled={isProcessing}
+                  >
+                    {/* {isProcessing ? <p>Detecting...</p> : <p>Start Detecting</p>} */}
+                    {isProcessing ? (
+                      <p>Detecting...</p>
+                    ) : (
+                      <p>Start Detecting</p>
+                    )}
+                  </button>
+                  {isProcessing && (
+                    <button
+                      className="block w-full rounded bg-red-600 px-12 py-3 text-sm font-medium text-white shadow hover:bg-red-700 focus:outline-none focus:ring active:bg-red-500 sm:w-auto hover:cursor-pointer"
+                      onClick={() => {
+                        setIsData(!isData);
+                        setIsProcessing(false);
+                        setFlowsAnalyzed(0);
+                        setSpoofedFlowCount(0);
+                        setPacketLength(0);
+                        setFlowArray([]);
+                      }}
+                    >
+                      Stop Detection Process
+                    </button>
+                  )}
+                </div>
               ) : (
                 <button
                   className="block w-full rounded bg-blue-600 px-12 py-3 text-sm font-medium text-white shadow hover:bg-blue-700 focus:outline-none focus:ring active:bg-blue-500 sm:w-auto hover:cursor-pointer"
-                  onClick={() => {
+                  onClick={async () => {
+                    const res = await axios.post(
+                      "http://localhost:9000/api/v1/flows",
+                      { data: flowArray }
+                    );
+                    console.log(res);
                     setIsData(!isData);
+                    setFlowsAnalyzed(0);
+                    setSpoofedFlowCount(0);
+                    setPacketLength(0);
+                    setFlowArray([]);
                   }}
                 >
-                  Filter Again
+                  Detect Again
                 </button>
               )}
             </div>
@@ -195,12 +226,12 @@ const Dashboard = () => {
                   </svg>
                 </span>
 
-                <p className="font-medium sm:text-lg">Filtering Complete!</p>
+                <p className="font-medium sm:text-lg">Detecting Complete!</p>
               </div>
 
               <p className="mt-4 text-gray-500">
-                The filtering process is complete. You can now view the results
-                of the packet filtering process, including the analyzed flows
+                The Detecting process is complete. You can now view the results
+                of the packet detecting process, including the analyzed flows
                 and any detected spoofed packets.
               </p>
 

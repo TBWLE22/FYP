@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 300px;
+  width: 800px;
   margin: auto;
   padding: 1rem;
 }
@@ -14,7 +14,7 @@
 
 .packet-feed {
   width: 100%;
-  height: 400px; /* Adjust the height as desired */
+  height: 600px; /* Adjust the height as desired */
   overflow-y: auto;
   border: 1px solid #ddd;
   padding: 10px;

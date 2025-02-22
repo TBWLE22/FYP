@@ -14,7 +14,7 @@ const Navbar = () => {
 
         <select id="Tab" className="w-full rounded-md border-gray-200">
           <option>Dashboard</option>
-          <option>Settings</option>
+          <option>History</option>
         </select>
       </div>
 
@@ -34,15 +34,15 @@ const Navbar = () => {
             </Link>
 
             <Link
-              to="/settings"
+              to="/history"
               className={`shrink-0 border-b-2 px-1 pb-4 text-lg font-medium
                   ${
-                    pathname === "/settings"
+                    pathname === "/history"
                       ? "border-sky-500 text-sky-600"
                       : " text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   }`}
             >
-              Settings
+              History
             </Link>
           </nav>
         </div>

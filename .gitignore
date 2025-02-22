@@ -3,3 +3,7 @@ model/data.csv
 model/xgboost_model.json
 
 __pycache__/
+
+/node-server/node_modules/
+/node-server/yarn.lock
+/node-server/.env
