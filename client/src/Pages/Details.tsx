@@ -12,7 +12,6 @@ type FlowData = {
 const Details = () => {
   const location = useLocation();
   const { flowArray } = location.state || {}; // Safely destructure the flowArray from location.state
-
   return (
     <div className="m-4 p-4">
       <h1 className="text-xl font-semibold mb-4 text-center">Details Page</h1>

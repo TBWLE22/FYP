@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Dashboard from "./Pages/Dashboard";
-import Settings from "./Pages/Settings";
+import FlowHistory from "./Pages/FlowHistory";
 import Layout from "./Layout/Layout";
 import "./index.css";
 import DataContext from "./context/DataContext";
@@ -18,7 +18,7 @@ const App = () => {
           <Route path="/details" element={<Details />} />
           <Route path="/spoofed" element={<SpoofPackets />} />
           <Route path="/flowAnalysis" element={<FlowAnalysis />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/history" element={<FlowHistory />} />
         </Route>
       </Routes>
     </DataContext>

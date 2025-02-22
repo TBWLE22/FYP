@@ -19,6 +19,7 @@ const Data = ({
   setFlowArray,
 }: DataProps) => {
   const [packets, setPackets] = useState<Packet[]>([]);
+  const [SpoofedPacketCount, setSpoofedPacketCount] = useState(0);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -60,6 +61,13 @@ const Data = ({
     };
   }, [isWebSocketActive, setPacketLength]);
 
+  // Count the number of spoofed packets
+  useEffect(() => {
+    const spoofedPacketCount = packets.filter(
+      (packet) => packet["Spoofed IP"] === true
+    ).length;
+    setSpoofedPacketCount(spoofedPacketCount);
+  }, [packets]);
 
   // Map the packets to display them as live comments
   const packetList = packets.map((packet, index) => (
@@ -86,7 +94,12 @@ const Data = ({
 
   return (
     <div className="packet-container">
-      <h1 className="my-4 text-gray-900 sm:text-xl">Live Packet Feed</h1>
+      <strong className="my-4 text-gray-900 sm:text-xl">
+        Live Packet Feed
+      </strong>
+      <h2 className="my-4 text-gray-600 sm:text-l">
+        Spoofed Packet Count in Current Flow : {SpoofedPacketCount}
+      </h2>
       <div className="packet-feed">{packetList}</div>
     </div>
   );
