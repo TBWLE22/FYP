@@ -17,12 +17,14 @@ spoofed_ip_count = 0
 flow_count = 0
 packet_queue = Queue()
 
+spoofed = []
+
 
 def check_spoofed_ip(flow):
+    global spoofed_ip_count, flow_count
     flow.drop(["Source IP", "Destination IP"], inplace=True, axis=1)
     preds = model.predict(flow)
-    global flow_count
-    global spoofed_ip_count
+    print(preds)
     spoofed_ip_count += sum(preds)
     flow_count += len(flow)
     return preds
@@ -187,8 +189,18 @@ async def send_flow_data(websocket):
             })
 
         flow_df = pd.DataFrame(flow_data)
+
         test = check_spoofed_ip(flow_df.copy())
-        flow_df['Spoofed IP'] = True if test[0] == 1 else False
+
+        flow_df['Spoofed IP'] = test
+
+        flow_df['Spoofed IP'] = flow_df['Spoofed IP'].apply(
+            lambda x: True if x == 1 else False)
+
+        global spoofed
+        flow_df[flow_df["Spoofed IP"] == True]["Source IP"].apply(
+            lambda x: spoofed.append(x))
+
         await websocket.send_json(flow_df.to_dict(orient='records'))
 
         flows.clear()
