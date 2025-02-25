@@ -20,14 +20,17 @@ const Dashboard = () => {
   } = useDataContext();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isWebSocketActive, setIsWebSocketActive] = useState(false);
+  const [spoofedIps, setSpoofedIps] = useState([]);
+
   const navigate = useNavigate();
 
   const getFlowAnalysis = async () => {
     const {
-      data: { flows_analyzed, spoofed_flow_count },
+      data: { flows_analyzed, spoofed_flow_count, spoofed_ips },
     } = await axios.get("http://127.0.0.1:8000/count");
     setFlowsAnalyzed(flows_analyzed);
     setSpoofedFlowCount(spoofed_flow_count);
+    setSpoofedIps(spoofed_ips);
   };
 
   useEffect(() => {
@@ -46,7 +49,6 @@ const Dashboard = () => {
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
             IP Spoofing Detection
           </h2>
-
           <p className="mt-4 text-gray-500 sm:text-xl">
             This dashboard provides real-time analysis of network traffic,
             helping you to detect IP spoofing attempts. Keep track of the number
@@ -54,6 +56,14 @@ const Dashboard = () => {
             network security.
           </p>
         </div>
+        {spoofedIps.length > 0 && (
+          <div className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center mt-5">
+            <h1 className="text-xl ">The following IPs have been blocked</h1>
+            {spoofedIps.map((ip) => (
+              <p key={ip}>{ip}</p>
+            ))}
+          </div>
+        )}
         <dl className="mt-6 grid grid-cols-1 gap-4 sm:mt-8 sm:grid-cols-2 lg:grid-cols-3">
           <div
             className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center hover:cursor-pointer hover:bg-gray-50"
@@ -77,7 +87,6 @@ const Dashboard = () => {
               </>
             )}
           </div>
-
           <div className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center">
             <dt className="order-last text-lg font-medium text-gray-500">
               Total Number of Packets in{" "}
@@ -87,7 +96,6 @@ const Dashboard = () => {
               <p>{packetLength}</p>
             </dd>
           </div>
-
           <div
             className="flex flex-col rounded-lg border border-gray-100 px-4 py-8 text-center hover:cursor-pointer hover:bg-gray-50"
             onClick={() => {
