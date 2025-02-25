@@ -8,6 +8,8 @@ from collections import defaultdict
 import pandas as pd
 import numpy as np
 from xgboost import XGBClassifier
+import subprocess
+import socket
 
 model = XGBClassifier()
 model.load_model('xgboost_model.json')
@@ -190,6 +192,11 @@ async def send_flow_data(websocket):
 
         flow_df = pd.DataFrame(flow_data)
 
+        hostname = socket.gethostname()
+        private_ip = socket.gethostbyname(hostname)
+
+        flow_df = flow_df[flow_df['Source IP'] != private_ip]
+
         test = check_spoofed_ip(flow_df.copy())
 
         flow_df['Spoofed IP'] = test
@@ -229,4 +236,18 @@ async def websocket_endpoint(websocket: WebSocket):
 async def get_counts():
     global spoofed_ip_count
     global flow_count
-    return {'spoofed_flow_count': int(spoofed_ip_count), 'flows_analyzed': int(flow_count)}
+    global spoofed
+    block_ips(spoofed)
+    return {'spoofed_flow_count': int(spoofed_ip_count), 'flows_analyzed': int(flow_count), 'spoofed_ips': spoofed}
+
+
+def block_ips(ips):
+    ips = list(set(ips))
+
+    for ip in ips:
+        try:
+            subprocess.run(["netsh", "advfirewall", "firewall", "add", "rule", "name=BlockIPIDPF", "dir=in",
+                            "action=block", "remoteip=" + ip], check=True)
+            print(f"Blocked IP: {ip}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error blocking IP {ip}: {e}")
