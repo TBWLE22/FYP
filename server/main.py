@@ -238,12 +238,12 @@ async def get_counts():
     global flow_count
     global spoofed
     block_ips(spoofed)
-    return {'spoofed_flow_count': int(spoofed_ip_count), 'flows_analyzed': int(flow_count), 'spoofed_ips': spoofed}
+    spoofed_ips = list(set(spoofed))
+    return {'spoofed_flow_count': int(spoofed_ip_count), 'flows_analyzed': int(flow_count), 'spoofed_ips': spoofed_ips}
 
 
 def block_ips(ips):
     ips = list(set(ips))
-
     for ip in ips:
         try:
             subprocess.run(["netsh", "advfirewall", "firewall", "add", "rule", "name=BlockIPIDPF", "dir=in",

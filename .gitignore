@@ -7,3 +7,7 @@ __pycache__/
 /node-server/node_modules/
 /node-server/yarn.lock
 /node-server/.env
+.venv/
+server/venv
+./egress_filter.py
+./ingress_filter.py
